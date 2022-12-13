@@ -1,9 +1,10 @@
-keys
+keys/
 *.csv
 *.dat
 *.png
 *.json
 data/
+test/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from spacetrack import SpaceTrackClient
-import spacetrack.operators as op
+import requests
 from datetime import datetime
 import os
+import io
 # import datetime
 
 
@@ -21,28 +21,52 @@ def getSpactrackClient(folder="keys"):
     """
     keyfile = f"{folder}/spacetrack.txt"
     if os.path.exists(keyfile):
-        with open(keyfile, 'r') as kf:
+        with open(keyfile, "r") as kf:
             username, password = kf.read().split("\n")
-        client = SpaceTrackClient(username, password)
-        return client
+        return username, password
 
     else:
         raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
-    
 
-def query(NORADid:int, start, end,):
-    st.tle_publish(format="tle", order+by)
+
+def query(
+    username:str,
+    password:str,
+    NORADid: int,
+    start:datetime,
+    end:datetime,
+):
+    startS = str(start)
+    endS = str(end)
+
+    logonURL = 'https://www.space-track.org/ajaxauth/login'
+    gpURL = "https://www.space-track.org/basicspacedata/query/class/gp_history/"
+    template = gpURL + f"NORAD_CAT_ID/{NORADid}/EPOCH/>2016-1-1,<2022-1-1/orderby/EPOCH asc/format/csv/"
+
+    creds = {"identity":username, "password":password}
+    with requests.Session() as sesh:
+        cookie = sesh.post(logonURL, data=creds)
+
+        res = sesh.get(template)
+        if res.status_code != 200:
+            print(res)
+            raise ValueError(res, "GET fail on request")
+        else:
+            print(res.text)
+        
+        if len(res.text) > 2:                
+            data = io.StringIO(res.text)
+            P = pd.read_csv(data)
+            print(P)
+            P.to_csv("data/hi.csv")
+        else:
+            print(res.status_code)
+            raise RuntimeError("error in request")
 
 
 if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]
-    drange = op.inclusive_range(datetime(2019, 6, 26), datetime(2019, 6, 27))
-    norads = [51092, 51062, 51081, 50987, 51032]
-    st = getSpactrackClient()
-    lines = st.tle(iter_lines=True, publish_epoch=drange, orderby='TLE_LINE1', format='tle')
-    # with open('tle.txt', 'w') as fp:
-    #     for line in lines:
-    #         fp.write(line)
-
-
-
+    start = datetime(2016,1,1)
+    end = datetime(2023,1,1)
+    username, password = getSpactrackClient()
+    query(username, password, 51092, start, end)

@@ -38,7 +38,11 @@ def query(
     NORADid: int,
     start:datetime,
     end:datetime,
+    saveFolder = "data"
 ):
+    if not os.path.exists(saveFolder):
+        os.makedirs(saveFolder)
+
     startS = str(start)
     endS = str(end)
 
@@ -49,25 +53,34 @@ def query(
     gpURL = "https://www.space-track.org/basicspacedata/query/class/gp_history/"
     template = gpURL + f"NORAD_CAT_ID/{NORADid}/EPOCH/>2020-1-1,<2022-1-1/orderby/EPOCH asc/format/csv/"
 
-    creds = {"identity":username, "password":password}
-    with requests.Session() as sesh:
-        cookie = sesh.post(logonURL, data=creds)
 
-        res = sesh.get(template)
-        if res.status_code != 200:
-            print(res)
-            raise ValueError(res, "GET fail on request")
-        else:
-            print(res.text)
-        
-        if len(res.text) > 2:                
-            data = io.StringIO(res.text)
-            P = pd.read_csv(data)
-            print(P)
-            P.to_csv("data/hi.csv")
-        else:
-            print(res.status_code)
-            raise RuntimeError("File is empty, may be API overload")
+    saveFilePath = f"{saveFolder}/{NORADid}.csv"
+    if not os.path.exists(saveFilePath):
+        creds = {"identity":username, "password":password}
+        with requests.Session() as sesh:
+            cookie = sesh.post(logonURL, data=creds)
+
+            res = sesh.get(template)
+            if res.status_code != 200:
+                print(res)
+                raise ValueError(res, "GET fail on request")
+            else:
+                pass
+            
+            if len(res.text) > 2:                
+                data = io.StringIO(res.text)
+                P = pd.read_csv(data)
+                P.to_csv(saveFilePath)
+            else:
+                print(res.status_code)
+                raise RuntimeError("File is empty, may be API overload")
+
+            return P
+    else:
+        P = pd.read_csv(saveFilePath)
+        # csv processing.
+
+        return P
 
 
 if __name__ == "__main__":
@@ -75,4 +88,4 @@ if __name__ == "__main__":
     start = datetime(2016,1,1)
     end = datetime(2023,1,1)
     username, password = getSpactrackClient()
-    query(username, password, 51092, start, end)
+    query(username, password, 27386, start, end)

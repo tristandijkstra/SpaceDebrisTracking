@@ -28,6 +28,9 @@ def getSpactrackClient(folder="keys"):
     else:
         raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
 
+def formatDates():
+    pass
+
 
 def query(
     username:str,
@@ -39,9 +42,12 @@ def query(
     startS = str(start)
     endS = str(end)
 
+    print(startS)
+    print(endS)
+
     logonURL = 'https://www.space-track.org/ajaxauth/login'
     gpURL = "https://www.space-track.org/basicspacedata/query/class/gp_history/"
-    template = gpURL + f"NORAD_CAT_ID/{NORADid}/EPOCH/>2016-1-1,<2022-1-1/orderby/EPOCH asc/format/csv/"
+    template = gpURL + f"NORAD_CAT_ID/{NORADid}/EPOCH/>2020-1-1,<2022-1-1/orderby/EPOCH asc/format/csv/"
 
     creds = {"identity":username, "password":password}
     with requests.Session() as sesh:
@@ -61,7 +67,7 @@ def query(
             P.to_csv("data/hi.csv")
         else:
             print(res.status_code)
-            raise RuntimeError("error in request")
+            raise RuntimeError("File is empty, may be API overload")
 
 
 if __name__ == "__main__":

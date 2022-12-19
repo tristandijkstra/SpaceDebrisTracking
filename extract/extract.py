@@ -102,7 +102,6 @@ def query(
                 .assign(TLE_LINE1min1=lambda x: x.shift(1).TLE_LINE1)
                 .assign(TLE_LINE2min1=lambda x: x.shift(1).TLE_LINE2)
                 .assign(deltat=lambda x: (x.EPOCH - x.shift(1).EPOCH).dt.total_seconds())
-                # .assign(deltat=lambda x: x.deltat)
                 .drop(index=0)
 
             )
@@ -111,9 +110,6 @@ def query(
     else:
         print(f"Data for {NORADid} already generated")
         P = pd.read_csv(saveFilePath, index_col=0)
-
-        # csv processing.
-
         return P
 
 

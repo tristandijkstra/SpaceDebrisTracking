@@ -119,6 +119,8 @@ if __name__ == "__main__":
     end = datetime(2023, 1, 1)
     username, password = getSpactrackClient()
     q = query(username, password, 27386, start, end, forceRegen=False)
+    id = ['2013-066', '2018-092', '2019-084', '2022-002']
+    discosweb(id)
 
     print(q)
     # print(q.dtypes)

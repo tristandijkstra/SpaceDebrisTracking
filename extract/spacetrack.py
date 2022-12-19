@@ -20,7 +20,7 @@ def getSpactrackClient(folder="keys"):
     Returns:
         _type_: _description_
     """
-    keyfile = f"{folder}/spacetrack.txt"
+    keyfile = os.path.normpath(__file__ + "../../../keys/spacetrack.txt")
     if os.path.exists(keyfile):
         with open(keyfile, "r") as kf:
             username, password = kf.read().split("\n")

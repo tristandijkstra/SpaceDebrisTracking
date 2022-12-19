@@ -112,6 +112,71 @@ def query(
         P = pd.read_csv(saveFilePath, index_col=0)
         return P
 
+def discos(
+    launchID: str,
+    saveFolder: str = "discos",
+    forceRegen: bool = False 
+):
+    """_summary_
+
+    Args:
+        launchID (str): the launch ids 
+        saveFolder (str, optional): location of the folder . Defaults to "discos".
+        forceRegen (bool, optional): can change to true if you want to rewrite the folders . Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
+    if not os.path.exists(saveFolder):
+            os.makedirs(saveFolder)
+    saveFilePath = f"{saveFolder}/{launchID}.csv"
+
+    if not os.path.exists(saveFilePath) or forceRegen:
+        print(f"Generating for launch: {launchID}") 
+        URL = 'https://discosweb.esoc.esa.int'
+        token = 'IjE0OGI4MzhlLWQ3ZGEtNGNhMS1hMjY4LWEzOTM5ZTY4ZWZjMCI.zTYeKlbcwFL6gWcd-heKTs3Soto'
+
+        response = requests.get(
+            f'{URL}/api/objects',
+            headers={
+                'Authorization': f'Bearer {token}',
+                'DiscosWeb-Api-Version': '2',
+            },
+            params={
+                'filter': f"eq(launch.cosparLaunchNo,'{launchID}')",
+                'sort': '-reentry.epoch',
+
+            },
+        )
+
+        doc = response.json()
+
+        b = [] #extracting data
+        for u in doc["data"]:
+            i =  u["attributes"]
+            b.append(i)
+        df = pd.DataFrame.from_dict(b) #makes a dictonary of data
+        satnumber = df.satno.values.tolist() #extracts satno coloumn
+        df.to_csv(saveFilePath) 
+
+        return df, satnumber
+
+
+    else:
+        P = pd.read_csv(saveFilePath, index_col=0)
+        satnumber = P.satno.values.tolist()# type: ignore
+        return P, satnumber
+
+def discosweb(launchIDs: list):
+    datafram = {} #dataframe
+    norad = {} #satno
+    for x in launchIDs:
+        P = discos(x)
+        P, norads = discos(x)
+        datafram[x] = P
+        norad[x] = norads
+    return datafram, norad
+
 
 if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]

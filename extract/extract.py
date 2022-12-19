@@ -117,7 +117,7 @@ def discos(
     saveFolder: str = "discos",
     forceRegen: bool = False 
 ):
-    """_summary_
+    """retreives a dic of list of launch items in a launch id for one id and a list of norad id
 
     Args:
         launchID (str): the launch ids 
@@ -168,6 +168,15 @@ def discos(
         return P, satnumber
 
 def discosweb(launchIDs: list):
+    """retreives a dic of list of launch items in a launch id for multiple ids and a list of norad ids
+
+    Args:
+        launchIDs (list): list of launch id 
+
+    Returns:
+        datafram: dic data frame for that launch id
+        norad: a list of the satelitte numbers 
+    """
     datafram = {} #dataframe
     norad = {} #satno
     for x in launchIDs:

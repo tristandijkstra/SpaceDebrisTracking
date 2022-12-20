@@ -112,6 +112,7 @@ def query(
         P = pd.read_csv(saveFilePath, index_col=0)
         return P
 
+
 def discos(
     launchID: str,
     saveFolder: str = "discos",
@@ -187,6 +188,18 @@ def discosweb(launchIDs: list):
     return datafram, norad
 
 
+def querySpacetrackList(NORADids: list):
+    datafram = {} #dataframe
+    TLE = {} #TLE's
+    # norad = {} #satno
+    for i in NORADids:
+        P = query(i)
+        P, TLEs = query(i)
+        datafram[i] = P
+        TLE[i] = TLEs
+    return datafram, TLE
+
+
 if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
@@ -194,7 +207,10 @@ if __name__ == "__main__":
     username, password = getSpactrackClient()
     q = query(username, password, 27386, start, end, forceRegen=False)
     id = ['2013-066', '2018-092', '2019-084', '2022-002']
-    discosweb(id)
+
 
     print(q)
     # print(q.dtypes)
+    querySpacetrackList(norads)
+
+

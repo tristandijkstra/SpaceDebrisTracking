@@ -22,33 +22,6 @@ MUearth = 398600  # km^..
 Rearth = 6378.136  # km
 
 
-# def retrieveTLEHTTP(NORADid: int) -> Tuple[str, str, str]:
-#     """retrieve TLE information from celestrak using HTTP
-#
-#     Args:
-#         NORADid (int): NORAD ID of the satellite
-#
-#     Returns:
-#         str: first line of the TLE
-#         str: second line of the TLE
-#         str: name of the satelite
-#     """
-#     url = f"https://celestrak.org/NORAD/elements/supplemental/sup-gp.php?CATNR={NORADid}&FORMAT=TLE"
-#     tle = requests.get(url)
-#     tleText = tle.text.split("\n")
-#     satName = tleText[0].strip()
-#     s = tleText[1].strip()
-#     t = tleText[2].strip()
-#     return s, t, satName
-
-
-# def generateDATFile(NORADid: int):
-#     """make a dat file with given integer norad id"""
-#     url = f"https://celestrak.org/NORAD/elements/supplemental/sup-gp.php?CATNR={NORADid}&FORMAT=TLE"
-#     tle = requests.get(url)
-#     with open("TLE.dat", "w") as f:
-#         f.write(tle.text)
-
 def returnTestTLE():
     return "1 27386U 02009A   20001.54192287  .00000005  00000-0  15038-4 0  9994", "2 27386  98.1404  17.3951 0001257  86.5901  84.8559 14.37967408934480", "1 27386U 02009A   20001.82053934  .00000003  00000-0  14345-4 0  9998", "2 27386  98.1404  17.6591 0001254  86.7982  86.1169 14.37967399934527"
 
@@ -58,55 +31,38 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2):
 
     JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite1, 3, dt=1)
     JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite2, 3, dt=1)
-    print(propagateSat(satellite1, 3, dt=1))
-    print(propagateSat(satellite2, 3, dt=1))
+    # print(propagateSat(satellite1, 3, dt=1))
+    # print(propagateSat(satellite2, 3, dt=1))
+    a = returnLocation(satellite1, 5000)
+    b = returnLocation(satellite1, 0)
+    print(returnLocation(satellite1))
+
+def returnLocation(satellite: Satrec, dt):
+    yr = satellite.epochyr
+    mo, d, h, m, s = days2mdhms(yr, satellite.epochdays)
+    epochStart = datetime(2000 + yr, mo, d, h, m, int(s)).timestamp()
+    epochStart += dt
+
+    startTime = datetime.fromtimestamp(epochStart)
+
+
+
+    trange = pd.date_range(startTime, startTime)
+    # get julian dates
+    t = trange.to_julian_date().to_numpy()
+    # split it between decimals and the integer
+    jd = np.floor(t).astype(np.int64)
+    fr = t - jd
+
+
+    e, r, v = satellite.sgp4(jd, fr)
+
+    return r
 
 
 
 
 
-# def retrieveTLEdat(file: str):
-#     """retrieve a TLEdat file
-#
-#     Args:
-#         file (str): string path of the file
-#
-#     Returns:
-#         str: TLE components
-#     """
-#     with open(file) as f:
-#         tleText = f.readlines()
-#         satName = tleText[0].strip()
-#         TLE1 = tleText[1].strip()
-#         TLE2 = tleText[2].strip()
-#     return TLE1, TLE2, satName
-
-
-# def retrieveConfig(file: str):
-#     """Retrieve config with parameter config should contain:
-#      - TLE.dat file
-#      - start timestamp
-#      - timestamp in seconds
-#      - end timestamp
-#      - data output file
-#
-#     Args:
-#         file (str): string path of the file
-#
-#
-#     """
-#     with open(file) as f:
-#         lines = f.readlines()
-#         tlefile = lines[0].strip()
-#         start = float(lines[1].strip())
-#         dt = float(lines[2].strip())
-#         end = float(lines[3].strip())
-#         outputfile = lines[4].strip()
-#
-#     return tlefile, start, dt, end, outputfile
-
-def returnLocation(TLE_lin1, TLE_line2) -> Tuple[np.darray]:
-    pass
 
 
 

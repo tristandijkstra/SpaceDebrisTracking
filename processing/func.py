@@ -25,40 +25,58 @@ Rearth = 6378.136  # km
 def returnTestTLE():
     return "1 27386U 02009A   20001.54192287  .00000005  00000-0  15038-4 0  9994", "2 27386  98.1404  17.3951 0001257  86.5901  84.8559 14.37967408934480", "1 27386U 02009A   20001.82053934  .00000003  00000-0  14345-4 0  9998", "2 27386  98.1404  17.6591 0001254  86.7982  86.1169 14.37967399934527"
 
+
+# Combine two definitions below, same inputs
+# Extract csv columns in separate function (later)
+
+
 def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
     satellite1 = Satrec.twoline2rv(TLE1_1, TLE1_2)
     satellite2 = Satrec.twoline2rv(TLE2_1, TLE2_2)
 
+    mo1, d1, h1, m1, s1 = days2mdhms(satellite1.epochyr, satellite1.epochdays)
+    mo2, d2, h2, m2, s2 = days2mdhms(satellite2.epochyr, satellite2.epochdays)
+
+    e1, r1, v1 = satellite1.sgp4(jd2,fr2)
+    e2, r2, v2 = satellite2.sgp4(jd2,fr2)
+
+    r1 = np.asarray(r1) #in km
+    r2 = np.asarray(r2) #in km
+
+    error = r2 - r1 # True value minus calculated value
+
+    return error
+    
     # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite1, 3, dt=1)
     # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite2, 3, dt=1)
     # # print(propagateSat(satellite1, 3, dt=1))
     # # print(propagateSat(satellite2, 3, dt=1))
-    a = returnLocation(satellite1, dt)
-    b = returnLocation(satellite2, 0)
+    #a = returnLocation(satellite1, dt)
+    #b = returnLocation(satellite2, 0)
 
-    error = a-b
+    #error = a-b
 
-def returnLocation(satellite: Satrec, dt):
-    yr = satellite.epochyr
-    mo, d, h, m, s = days2mdhms(yr, satellite.epochdays)
-    epochStart = datetime(2000 + yr, mo, d, h, m, int(s)).timestamp()
-    epochStart += dt
+# def returnLocation(satellite: Satrec, dt):
+#     yr = satellite.epochyr
+#     mo, d, h, m, s = days2mdhms(yr, satellite.epochdays)
+#     epochStart = datetime(2000 + yr, mo, d, h, m, int(s)).timestamp()
+#     epochStart += dt
 
-    startTime = datetime.fromtimestamp(epochStart)
-
-
-
-    trange = pd.date_range(startTime, startTime)
-    # get julian dates
-    t = trange.to_julian_date().to_numpy()
-    # split it between decimals and the integer
-    jd = np.floor(t).astype(np.int64)
-    fr = t - jd
+#     startTime = datetime.fromtimestamp(epochStart)
 
 
-    e, r, v = satellite.sgp4(jd, fr)
 
-    return r
+#     trange = pd.date_range(startTime, startTime)
+#     # get julian dates
+#     t = trange.to_julian_date().to_numpy()
+#     # split it between decimals and the integer
+#     jd = np.floor(t).astype(np.int64)
+#     fr = t - jd
+
+
+#     e, r, v = satellite.sgp4(jd, fr)
+
+    # return r
 
 
 

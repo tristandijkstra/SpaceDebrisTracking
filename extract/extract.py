@@ -31,7 +31,17 @@ def getkeys(route:str,folder="keys"):
             return username, password
 
         else:
-            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
+            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")\
+    if route == 'discos': 
+        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
+        if os.path.exists(keyfile):
+            with open(keyfile, "r") as kf:
+                token = kf.read()
+            return token
+        else:
+            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
+    else: 
+        raise ValueError("No key files given/Error")
 
     if route == 'discos': 
         keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
@@ -48,11 +58,9 @@ def getkeys(route:str,folder="keys"):
 
 
 
-def formatDates():
-    pass
 
 
-def query(
+def querySpacetrack(
     username: str,
     password: str,
     NORADid: int,
@@ -60,19 +68,39 @@ def query(
     end: datetime,
     saveFolder="data",
     forceRegen: bool = False
-):
+) -> pd.DataFrame:
+    """"Query spacetrack for the TLE data of one NORADID over a specific period of time. 
+    Generate and save the data if it has not been generated already, then return this data in a dataframe.
+    Return the cached dataframe otherwise.
+
+    Args:
+        username (str): username for spacetrack, can be retrieved using the getKeys function
+        password (str): password for spacetrack, can be retrieved using the getKeys function
+        NORADid (int): Norad id of the object
+        start (datetime): start date of the query
+        end (datetime): end date of the query
+        saveFolder (str, optional): location to save the csv. Defaults to "data".
+        forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+
+    Raises:
+        ValueError: GET request failed for spacetrack
+        RuntimeError: API may be overloaded
+
+    Returns:
+        pd.Dataframe: dataframe with TLE information of the NORAD object
+    """ 
+
     if not os.path.exists(saveFolder):
         os.makedirs(saveFolder)
 
-    startS = str(start)
-    endS = str(end)
+    dateformat = "%Y-%m-%d"
+    startS = start.strftime(dateformat)
+    endS = end.strftime(dateformat)
 
     logonURL = "https://www.space-track.org/ajaxauth/login"
     gpURL = "https://www.space-track.org/basicspacedata/query/class/gp_history/"
-    template = (
-        gpURL
-        + f"NORAD_CAT_ID/{NORADid}/EPOCH/>2020-1-1,<2022-1-1/orderby/EPOCH asc/format/csv/"
-    )
+    queryStr = f"NORAD_CAT_ID/{NORADid}/EPOCH/>{startS},{endS}/orderby/EPOCH asc/format/csv/"
+    template = (gpURL + queryStr)
 
     saveFilePath = f"{saveFolder}/{NORADid}.csv"
     if not os.path.exists(saveFilePath) or forceRegen:
@@ -84,16 +112,12 @@ def query(
             if res.status_code != 200:
                 print(res)
                 raise ValueError(res, "GET fail on request")
-            else:
-                pass
 
             if len(res.text) > 2:
                 data = io.StringIO(res.text)
                 P = pd.read_csv(data)
-                # P.to_csv(saveFilePath)
             else:
-                print(res.status_code)
-                raise RuntimeError("File is empty, may be API overload")
+                raise RuntimeError(f"File is empty, may be API overload. status={res.status_code}")
 
             droplist = [
                 "CCSDS_OMM_VERS",
@@ -109,13 +133,12 @@ def query(
                 "FILE",
                 "GP_ID",
             ]
-            # print([u for u in P.columns if u not in droplist])
 
-            # dform = "%d-%m-%Y %H:%M:%S"
             dform = "%Y-%m-%dT%H:%M:%S.%f"
             P = (
                 P.drop(columns=droplist)
                 .assign(EPOCH=lambda x: pd.to_datetime(x.EPOCH, format=dform))
+                .drop_duplicates("EPOCH")
                 .assign(LAUNCH_DATE=lambda x: pd.to_datetime(x.LAUNCH_DATE, format=dform))
                 .assign(TLE_LINE1min1=lambda x: x.shift(1).TLE_LINE1)
                 .assign(TLE_LINE2min1=lambda x: x.shift(1).TLE_LINE2)
@@ -123,12 +146,21 @@ def query(
                 .drop(index=0)
 
             )
+
             P.to_csv(saveFilePath)
+
             return P
     else:
         print(f"Data for {NORADid} already generated")
-        P = pd.read_csv(saveFilePath, index_col=0)
+        dform = "%Y-%m-%dT%H:%M:%S.%f"
+        P = (
+            pd.read_csv(saveFilePath, index_col=0)
+            .assign(EPOCH=lambda x: pd.to_datetime(x.EPOCH, format=dform))
+            .assign(LAUNCH_DATE=lambda x: pd.to_datetime(x.LAUNCH_DATE, format=dform))
+            )
+
         return P
+
 
 def discos(
     launchID: str,
@@ -207,6 +239,18 @@ def discosweb(token: str, launchIDs: list):
     return datafram, norad
 
 
+def querySpacetrackList(NORADids: list):
+    datafram = {} #dataframe
+    TLE = {} #TLE's
+    # norad = {} #satno
+    for i in NORADids:
+        P = query(i)
+        P, TLEs = query(i)
+        datafram[i] = P
+        TLE[i] = TLEs
+    return datafram, TLE
+
+
 if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
@@ -217,5 +261,9 @@ if __name__ == "__main__":
     id = ['2013-066', '2018-092', '2019-084', '2022-002']
     discosweb(token,id)
 
+
     print(q)
     #print(q.dtypes)
+    querySpacetrackList(norads)
+
+

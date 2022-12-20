@@ -25,17 +25,18 @@ Rearth = 6378.136  # km
 def returnTestTLE():
     return "1 27386U 02009A   20001.54192287  .00000005  00000-0  15038-4 0  9994", "2 27386  98.1404  17.3951 0001257  86.5901  84.8559 14.37967408934480", "1 27386U 02009A   20001.82053934  .00000003  00000-0  14345-4 0  9998", "2 27386  98.1404  17.6591 0001254  86.7982  86.1169 14.37967399934527"
 
-def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2):
+def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
     satellite1 = Satrec.twoline2rv(TLE1_1, TLE1_2)
     satellite2 = Satrec.twoline2rv(TLE2_1, TLE2_2)
 
-    JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite1, 3, dt=1)
-    JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite2, 3, dt=1)
-    # print(propagateSat(satellite1, 3, dt=1))
-    # print(propagateSat(satellite2, 3, dt=1))
-    a = returnLocation(satellite1, 5000)
-    b = returnLocation(satellite1, 0)
-    print(returnLocation(satellite1))
+    # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite1, 3, dt=1)
+    # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite2, 3, dt=1)
+    # # print(propagateSat(satellite1, 3, dt=1))
+    # # print(propagateSat(satellite2, 3, dt=1))
+    a = returnLocation(satellite1, dt)
+    b = returnLocation(satellite2, 0)
+
+    error = a-b
 
 def returnLocation(satellite: Satrec, dt):
     yr = satellite.epochyr

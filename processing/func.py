@@ -105,6 +105,10 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2):
 #
 #     return tlefile, start, dt, end, outputfile
 
+def returnLocation(TLE_lin1, TLE_line2) -> Tuple[np.darray]:
+    pass
+
+
 
 def propagateSat(satellite: Satrec, orbPeriods: int = 3, dt: float = 1, start=None, end=None) \
         -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, float, datetime, datetime]:

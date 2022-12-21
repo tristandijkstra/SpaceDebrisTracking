@@ -25,6 +25,17 @@ Rearth = 6378.136  # km
 def returnTestTLE():
     return "1 27386U 02009A   20001.54192287  .00000005  00000-0  15038-4 0  9994", "2 27386  98.1404  17.3951 0001257  86.5901  84.8559 14.37967408934480", "1 27386U 02009A   20001.82053934  .00000003  00000-0  14345-4 0  9998", "2 27386  98.1404  17.6591 0001254  86.7982  86.1169 14.37967399934527"
 
+def TLEoneLine(file):
+    TLE1_1 = file(:,29)
+    TLE1_2 = file(:,30)
+    TLE2_1 = file(:,27)
+    TLE2_2 = file(:,28)
+    dt = file(:,31)
+
+    return TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt
+    
+    # Extract TLE1_1 = column 30, TLE1_2 = column 31, TLE2_1 = column 28, TLE2_2 = column 29
+
 
 # Combine two definitions below, same inputs
 # Extract csv columns in separate function (later)
@@ -46,6 +57,10 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
     error = r2 - r1 # True value minus calculated value
 
     return error
+
+def AssignDF(error, file):
+    file.assign(Error_TLE = error)
+
     
     # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite1, 3, dt=1)
     # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite2, 3, dt=1)

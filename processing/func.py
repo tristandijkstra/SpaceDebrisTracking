@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 
-from sgp4.api import Satrec, SGP4_ERRORS, days2mdhms
+from sgp4.api import Satrec, SGP4_ERRORS, days2mdhms, jday
 
 
 # pandas assign(columnname: lambda x(do some stuff here using x))
@@ -25,14 +25,14 @@ Rearth = 6378.136  # km
 def returnTestTLE():
     return "1 27386U 02009A   20001.54192287  .00000005  00000-0  15038-4 0  9994", "2 27386  98.1404  17.3951 0001257  86.5901  84.8559 14.37967408934480", "1 27386U 02009A   20001.82053934  .00000003  00000-0  14345-4 0  9998", "2 27386  98.1404  17.6591 0001254  86.7982  86.1169 14.37967399934527"
 
-def TLEoneLine(file):
-    TLE1_1 = file(:,29)
-    TLE1_2 = file(:,30)
-    TLE2_1 = file(:,27)
-    TLE2_2 = file(:,28)
-    dt = file(:,31)
+# def TLEoneLine(file):
+#     TLE1_1 = file(:,29)
+#     TLE1_2 = file(:,30)
+#     TLE2_1 = file(:,27)
+#     TLE2_2 = file(:,28)
+#     dt = file(:,31)
 
-    return TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt
+#     return TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt
     
     # Extract TLE1_1 = column 30, TLE1_2 = column 31, TLE2_1 = column 28, TLE2_2 = column 29
 
@@ -48,6 +48,8 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
     mo1, d1, h1, m1, s1 = days2mdhms(satellite1.epochyr, satellite1.epochdays)
     mo2, d2, h2, m2, s2 = days2mdhms(satellite2.epochyr, satellite2.epochdays)
 
+    jd2, fr2 = jday(satellite2.epochyr, mo2, d2, h2, m2, s2)
+
     e1, r1, v1 = satellite1.sgp4(jd2,fr2)
     e2, r2, v2 = satellite2.sgp4(jd2,fr2)
 
@@ -59,7 +61,12 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
     return error
 
 def AssignDF(error, file):
-    file.assign(Error_TLE = error)
+    file.assign(error_TLE = lambda x: generateError(x.TLE_LINE1MIN1, x.TLE_LINE2MIN1, x.TLE_LINE1, x.TLE_LINE2, x.dt))
+    return file
+
+# def AssignTest(error,file):
+#     file.assign
+
 
     
     # JD, time, r, v, start, end, startTime, endTime = propagateSat(satellite1, 3, dt=1)
@@ -279,7 +286,9 @@ def propagateSat(satellite: Satrec, orbPeriods: int = 3, dt: float = 1, start=No
 if __name__ == "__main__":
     TLE1_1, TLE1_2, TLE2_1, TLE2_2 = returnTestTLE()
 
-    generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2)
+    generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2,dt)
+
+    #AssignDF
 
     # satellite = Satrec.twoline2rv(s, t)
     # JD, time, r, v, _, _, start, end = propagateSat(satellite, nOrbits, dt)

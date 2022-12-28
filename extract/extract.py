@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 import io
 from typing import Tuple
-
+from tqdm import tqdm
 # import datetime
 
 
@@ -52,7 +52,8 @@ def querySpacetrack(
     start: datetime,
     end: datetime,
     saveFolder="data",
-    forceRegen: bool = False
+    forceRegen: bool = False,
+    verbose:bool = True
 ) -> pd.DataFrame:
     """Query spacetrack for the TLE data of one NORADID over a specific period of time. 
     Generate and save the data if it has not been generated already, then return this data in a dataframe.
@@ -136,7 +137,9 @@ def querySpacetrack(
 
             return P
     else:
-        print(f"Data for {NORADid} already generated")
+        if verbose:
+            print(f"Data for {NORADid} already generated")
+
         dform = "%Y-%m-%dT%H:%M:%S.%f"
         P = (
             pd.read_csv(saveFilePath, index_col=0)
@@ -151,7 +154,8 @@ def queryDiscosWeb(
     token: str,
     launchID: str,
     saveFolder: str = "discos",
-    forceRegen: bool = False 
+    forceRegen: bool = False,
+    verbose:bool = True
 ) -> Tuple[pd.DataFrame, list]:
     """retreives a dic of list of launch items in a launch id for one id and a list of norad id
 
@@ -170,7 +174,8 @@ def queryDiscosWeb(
     saveFilePath = f"{saveFolder}/{launchID}.csv"
 
     if not os.path.exists(saveFilePath) or forceRegen:
-        print(f"Generating for launch: {launchID}") 
+        if verbose:
+            print(f"Generating for launch: {launchID}") 
         URL = 'https://discosweb.esoc.esa.int'
         token = f'{token}'
 
@@ -204,7 +209,9 @@ def queryDiscosWeb(
 
 
     else:
-        print(f"DiscosWeb for launch: {launchID} already retrieved") 
+        if verbose:
+            print(f"DiscosWeb for launch: {launchID} already retrieved")
+
         P = pd.read_csv(saveFilePath, index_col=0)
         satnumber = list(P.satno.values) # type: ignore
         return P, satnumber
@@ -224,8 +231,8 @@ def queryDiscosWebMultiple(token: str, launchIDs: list, saveFolder="data/discosw
     dataFrameDict = {}
     noradsListDict = {}
 
-    for launchID in launchIDs:
-        P, noradsList = queryDiscosWeb(token, launchID, saveFolder, forceRegen)
+    for launchID in tqdm(launchIDs):
+        P, noradsList = queryDiscosWeb(token, launchID, saveFolder, forceRegen, verbose=False)
         dataFrameDict[launchID] = P
         noradsListDict[launchID] = noradsList
 
@@ -254,7 +261,7 @@ if __name__ == "__main__":
     username, password = getkeys(route = 'spacetrack')
     ids = ['2013-066', '2018-092', '2019-084', '2022-002']
 
-    queryDiscosWebMultiple(token, ids, forceRegen=False)
+    discosDataDict, noradsDict = queryDiscosWebMultiple(token, ids, forceRegen=False)
     # queryDiscosWebMultiple(token, ids)
     # querySpacetrackList(norads)
 

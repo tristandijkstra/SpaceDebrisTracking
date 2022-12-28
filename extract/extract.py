@@ -219,6 +219,19 @@ def querySpacetrackList(NORADids: list):
     return datafram, TLE
 
 
+def getData(launches:list, start:datetime, end:datetime):
+    # TODO FINISH
+    discosInfoDict, noradDict = discosweb(launches)
+
+    for launch in launches:
+        norads = noradDict[launch]
+        querySpacetrackList(norads)
+
+
+
+
+
+
 if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)

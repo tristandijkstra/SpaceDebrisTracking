@@ -4,11 +4,12 @@ import requests
 from datetime import datetime
 import os
 import io
+from typing import Tuple
 
 # import datetime
 
 
-def getkeys(route:str,folder="keys"):
+def getkeys(route:str, folder="keys"):
     """Read keys file. for "discos" will return a token. for "spacetrack" will return username, password
 
     Args:
@@ -19,45 +20,29 @@ def getkeys(route:str,folder="keys"):
         ValueError: if file does not exist return an error
 
     Returns:
-        _type_: _description_
-        for 'spacetrack' returns  username, password
-        for 'discosweb' returns token
+        for 'spacetrack' returns: username, password (str, str)
+        for 'discosweb' returns: token (str)
     """
     if route == 'spacetrack':
-        keyfile = os.path.normpath(__file__ + "../../../keys/spacetrack.txt")
+        keyfile = os.path.normpath(__file__ + f"../../../{folder}/spacetrack.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
                 username, password = kf.read().split("\n")
             return username, password
 
         else:
-            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")\
+            raise ValueError(f"No key files given: add a file:'{folder}/spacetrack.txt'")
+            
     if route == 'discos': 
-        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
+        keyfile = os.path.normpath(__file__ + f"../../../{folder}/discosweb.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
                 token = kf.read()
             return token
         else:
-            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
+            raise ValueError(f"No key files given: add a file:'{folder}/discosweb.txt'")
     else: 
         raise ValueError("No key files given/Error")
-
-    if route == 'discos': 
-        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
-        if os.path.exists(keyfile):
-            with open(keyfile, "r") as kf:
-                token = kf.read()
-            return token
-        else:
-            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
-    else: 
-        raise ValueError("No key files given/Error")
-
-
-
-
-
 
 
 def querySpacetrack(
@@ -69,7 +54,7 @@ def querySpacetrack(
     saveFolder="data",
     forceRegen: bool = False
 ) -> pd.DataFrame:
-    """"Query spacetrack for the TLE data of one NORADID over a specific period of time. 
+    """Query spacetrack for the TLE data of one NORADID over a specific period of time. 
     Generate and save the data if it has not been generated already, then return this data in a dataframe.
     Return the cached dataframe otherwise.
 
@@ -162,29 +147,30 @@ def querySpacetrack(
         return P
 
 
-def discos(
-    launchID: str,
+def queryDiscosWeb(
     token: str,
+    launchID: str,
     saveFolder: str = "discos",
     forceRegen: bool = False 
-):
+) -> Tuple[pd.DataFrame, list]:
     """retreives a dic of list of launch items in a launch id for one id and a list of norad id
 
     Args:
-        launchID (str): the launch ids 
         token (str): personal token for taken from getkeys()
+        launchID (str): the launch ids 
         saveFolder (str, optional): location of the folder . Defaults to "discos".
         forceRegen (bool, optional): can change to true if you want to rewrite the folders . Defaults to False.
 
     Returns:
-        _type_: _description_
+        pd.DataFrame: result from discosweb
+        list: list of NORAD ids for given launch
     """
     if not os.path.exists(saveFolder):
             os.makedirs(saveFolder)
     saveFilePath = f"{saveFolder}/{launchID}.csv"
 
     if not os.path.exists(saveFilePath) or forceRegen:
-        #print(f"Generating for launch: {launchID}") 
+        print(f"Generating for launch: {launchID}") 
         URL = 'https://discosweb.esoc.esa.int'
         token = f'{token}'
 
@@ -196,30 +182,35 @@ def discos(
             },
             params={
                 'filter': f"eq(launch.cosparLaunchNo,'{launchID}')",
-                'sort': '-reentry.epoch',
+                'sort': 'satno',
 
             },
         )
 
         doc = response.json()
 
-        b = [] #extracting data
+        b = [] # extracting data
         for u in doc["data"]:
-            i =  u["attributes"]
-            b.append(i)
-        df = pd.DataFrame.from_dict(b) #makes a dictonary of data
-        satnumber = df.satno.values.tolist() #extracts satno coloumn
-        df.to_csv(saveFilePath) 
+            b.append(u["attributes"])
+        
+        # makes a dictonary of data
+        P = pd.DataFrame.from_dict(b) # type: ignore
+        # extracts satno coloumn
+        satnumber = list(P.satno.values) 
 
-        return df, satnumber
+        P.to_csv(saveFilePath) 
+
+        return P, satnumber
 
 
     else:
+        print(f"DiscosWeb for launch: {launchID} already retrieved") 
         P = pd.read_csv(saveFilePath, index_col=0)
-        satnumber = P.satno.values.tolist()# type: ignore
+        satnumber = list(P.satno.values) # type: ignore
         return P, satnumber
 
-def discosweb(token: str, launchIDs: list):
+
+def queryDiscosWebMultiple(token: str, launchIDs: list, saveFolder="data/discosweb", forceRegen=False):
     """retreives a dic of list of launch items in a launch id for multiple ids and a list of norad ids
 
     Args:
@@ -227,39 +218,29 @@ def discosweb(token: str, launchIDs: list):
         launchIDs (list): list of launch id 
 
     Returns:
-        datafram: dic data frame for that launch id
-        norad: a list of the satelitte numbers 
+        dataFrameDict: a dict with a set of pandas dataframes with discosweb tables of each launch
+        noradsListDict: a dictionary with lists of NORAD ids for each launch
     """
-    datafram = {} #dataframe
-    norad = {} #satno
-    for x in launchIDs:
-        P, norads = discos(x, token)
-        datafram[x] = P
-        norad[x] = norads
-    return datafram, norad
+    dataFrameDict = {}
+    noradsListDict = {}
+
+    for launchID in launchIDs:
+        P, noradsList = queryDiscosWeb(token, launchID, saveFolder, forceRegen)
+        dataFrameDict[launchID] = P
+        noradsListDict[launchID] = noradsList
+
+    return dataFrameDict, noradsListDict
 
 
-def querySpacetrackList(NORADids: list):
-    datafram = {} #dataframe
-    TLE = {} #TLE's
-    # norad = {} #satno
-    for i in NORADids:
-        P = query(i)
-        P, TLEs = query(i)
-        datafram[i] = P
-        TLE[i] = TLEs
-    return datafram, TLE
+# def getData(launches:list, start:datetime, end:datetime):
+#     # TODO FINISH
+#     discosInfoDict, noradDict = discosweb(launches)
 
+#     for launch in launches:
+#         norads = noradDict[launch]
+#         querySpacetrackList(norads)
 
-def getData(launches:list, start:datetime, end:datetime):
-    # TODO FINISH
-    discosInfoDict, noradDict = discosweb(launches)
-
-    for launch in launches:
-        norads = noradDict[launch]
-        querySpacetrackList(norads)
-
-
+#     pass
 
 
 
@@ -268,15 +249,13 @@ if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
-    token = getkeys('discos')
-    username, password = getkeys('spacetrack')
-    q = query(username, password, 27386, start, end, forceRegen=False)
-    id = ['2013-066', '2018-092', '2019-084', '2022-002']
-    discosweb(token,id)
+    token = getkeys(route='discos')
 
+    username, password = getkeys(route = 'spacetrack')
+    ids = ['2013-066', '2018-092', '2019-084', '2022-002']
 
-    print(q)
-    #print(q.dtypes)
-    querySpacetrackList(norads)
+    queryDiscosWebMultiple(token, ids, forceRegen=False)
+    # queryDiscosWebMultiple(token, ids)
+    # querySpacetrackList(norads)
 
 

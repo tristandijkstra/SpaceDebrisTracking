@@ -8,26 +8,56 @@ import io
 # import datetime
 
 
-def getSpactrackClient(folder="keys"):
-    """Read keys file and return spacetrack client
+def getkeys(route:str,folder="keys"):
+    """Read keys file. for "discos" will return a token. for "spacetrack" will return username, password
 
     Args:
-        folder (str, optional): folder name. Defaults to "keys".
+        route (str): it can be "spacetrack" or "discosweb"
+        folder (str, optional):folder name. Defaults to "keys".
 
     Raises:
         ValueError: if file does not exist return an error
 
     Returns:
         _type_: _description_
+        for 'spacetrack' returns  username, password
+        for 'discosweb' returns token
     """
-    keyfile = os.path.normpath(__file__ + "../../../keys/spacetrack.txt")
-    if os.path.exists(keyfile):
-        with open(keyfile, "r") as kf:
-            username, password = kf.read().split("\n")
-        return username, password
+    if route == 'spacetrack':
+        keyfile = os.path.normpath(__file__ + "../../../keys/spacetrack.txt")
+        if os.path.exists(keyfile):
+            with open(keyfile, "r") as kf:
+                username, password = kf.read().split("\n")
+            return username, password
 
-    else:
-        raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
+        else:
+            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")\
+    if route == 'discos': 
+        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
+        if os.path.exists(keyfile):
+            with open(keyfile, "r") as kf:
+                token = kf.read()
+            return token
+        else:
+            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
+    else: 
+        raise ValueError("No key files given/Error")
+
+    if route == 'discos': 
+        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
+        if os.path.exists(keyfile):
+            with open(keyfile, "r") as kf:
+                token = kf.read()
+            return token
+        else:
+            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
+    else: 
+        raise ValueError("No key files given/Error")
+
+
+
+
+
 
 
 def querySpacetrack(
@@ -134,6 +164,7 @@ def querySpacetrack(
 
 def discos(
     launchID: str,
+    token: str,
     saveFolder: str = "discos",
     forceRegen: bool = False 
 ):
@@ -141,6 +172,7 @@ def discos(
 
     Args:
         launchID (str): the launch ids 
+        token (str): personal token for taken from getkeys()
         saveFolder (str, optional): location of the folder . Defaults to "discos".
         forceRegen (bool, optional): can change to true if you want to rewrite the folders . Defaults to False.
 
@@ -152,9 +184,9 @@ def discos(
     saveFilePath = f"{saveFolder}/{launchID}.csv"
 
     if not os.path.exists(saveFilePath) or forceRegen:
-        print(f"Generating for launch: {launchID}") 
+        #print(f"Generating for launch: {launchID}") 
         URL = 'https://discosweb.esoc.esa.int'
-        token = 'IjE0OGI4MzhlLWQ3ZGEtNGNhMS1hMjY4LWEzOTM5ZTY4ZWZjMCI.zTYeKlbcwFL6gWcd-heKTs3Soto'
+        token = f'{token}'
 
         response = requests.get(
             f'{URL}/api/objects',
@@ -187,10 +219,11 @@ def discos(
         satnumber = P.satno.values.tolist()# type: ignore
         return P, satnumber
 
-def discosweb(launchIDs: list):
+def discosweb(token: str, launchIDs: list):
     """retreives a dic of list of launch items in a launch id for multiple ids and a list of norad ids
 
     Args:
+        token (str): personal token from discosweb taken from getkeys
         launchIDs (list): list of launch id 
 
     Returns:
@@ -200,8 +233,7 @@ def discosweb(launchIDs: list):
     datafram = {} #dataframe
     norad = {} #satno
     for x in launchIDs:
-        P = discos(x)
-        P, norads = discos(x)
+        P, norads = discos(x, token)
         datafram[x] = P
         norad[x] = norads
     return datafram, norad
@@ -236,13 +268,15 @@ if __name__ == "__main__":
     norads = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
-    username, password = getSpactrackClient()
-    q = querySpacetrack(username, password, 27386, start, end, forceRegen=False)
+    token = getkeys('discos')
+    username, password = getkeys('spacetrack')
+    q = query(username, password, 27386, start, end, forceRegen=False)
     id = ['2013-066', '2018-092', '2019-084', '2022-002']
+    discosweb(token,id)
 
 
     print(q)
-    # print(q.dtypes)
+    #print(q.dtypes)
     querySpacetrackList(norads)
 
 

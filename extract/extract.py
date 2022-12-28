@@ -4,13 +4,11 @@ import requests
 from datetime import datetime
 import os
 import io
-from typing import Tuple
+from typing import Tuple, Union, Dict, List
 from tqdm import tqdm
 
-# import datetime
 
-
-def getkeys(route: str, folder="keys"):
+def getCredentials(source: str, folder="keys") -> Union[Tuple[str, str], str]:
     """Read keys file. for "discos" will return a token. for "spacetrack" will return username, password
 
     Args:
@@ -24,7 +22,7 @@ def getkeys(route: str, folder="keys"):
         for 'spacetrack' returns: username, password (str, str)
         for 'discosweb' returns: token (str)
     """
-    if route == "spacetrack":
+    if source == "spacetrack":
         keyfile = os.path.normpath(__file__ + f"../../../{folder}/spacetrack.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
@@ -36,7 +34,7 @@ def getkeys(route: str, folder="keys"):
                 f"No key files given: add a file:'{folder}/spacetrack.txt'"
             )
 
-    if route == "discos":
+    if source == "discos":
         keyfile = os.path.normpath(__file__ + f"../../../{folder}/discosweb.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
@@ -63,8 +61,8 @@ def querySpacetrack(
     Return the cached dataframe otherwise.
 
     Args:
-        username (str): username for spacetrack, can be retrieved using the getKeys function
-        password (str): password for spacetrack, can be retrieved using the getKeys function
+        username (str): username for spacetrack, can be retrieved using the getCredentials function
+        password (str): password for spacetrack, can be retrieved using the getCredentials function
         NORADid (int): Norad id of the object
         start (datetime): start date of the query
         end (datetime): end date of the query
@@ -110,7 +108,7 @@ def querySpacetrack(
                 P = pd.read_csv(data)
             else:
                 raise RuntimeError(
-                    f"File is empty, may be API overload. status={res.status_code}"
+                    f"File is empty, may be API overload or deorbitted spacecraft. status={res.status_code}"
                 )
 
             droplist = [
@@ -170,14 +168,15 @@ def querySpacetrackMultiple(
     saveFolder="data",
     forceRegen: bool = False,
     verbose: bool = False,
+    description: Union[str, None] = None,
 ) -> dict:
     """Query spacetrack for the TLE data of MULTIPLE NORAD ids over a specific period of time.
     Generate and save the data if it has not been generated already, then return this data in a dataframe.
     Return the cached dataframe otherwise.
 
     Args:
-        username (str): username for spacetrack, can be retrieved using the getKeys function
-        password (str): password for spacetrack, can be retrieved using the getKeys function
+        username (str): username for spacetrack, can be retrieved using the getCredentials function
+        password (str): password for spacetrack, can be retrieved using the getCredentials function
         NORADid (int): list of integer NORAD ids
         start (datetime): start date of the query
         end (datetime): end date of the query
@@ -195,23 +194,33 @@ def querySpacetrackMultiple(
 
     TLEdict = {}
 
-    for NORADid in tqdm(NORADidList):
-        # Retrieve and store TLE Data
-        TLEdf = querySpacetrack(
-            username,
-            password,
-            NORADid,
-            start,
-            end,
-            saveFolder=saveFolder,
-            forceRegen=forceRegen,
-            verbose=verbose,
-        )
+    errorNORADS = []
 
-        TLEdict[NORADid] = TLEdf
+    for NORADid in tqdm(NORADidList, desc=description):
+        # Retrieve and store TLE Data
+        try:
+            TLEdf = querySpacetrack(
+                username,
+                password,
+                NORADid,
+                start,
+                end,
+                saveFolder=saveFolder,
+                forceRegen=forceRegen,
+                verbose=verbose,
+            )
+
+            TLEdict[NORADid] = TLEdf
+
+        except Exception as e:
+            errorNORADS.append(NORADid)
+            print(f"Error in querySpacetrack: {e}, proceding")
+
+    if len(errorNORADS) > 0:
+        print(f"Total failed: {len(errorNORADS)} -> {errorNORADS}")
 
     return TLEdict
-    
+
 
 def queryDiscosWeb(
     token: str,
@@ -223,7 +232,7 @@ def queryDiscosWeb(
     """retreives a dic of list of launch items in a launch id for one id and a list of norad id
 
     Args:
-        token (str): personal token for taken from getkeys()
+        token (str): personal token for taken from getCredentials()
         launchID (str): the launch ids
         saveFolder (str, optional): location of the folder . Defaults to "discos".
         forceRegen (bool, optional): can change to true if you want to rewrite the folders . Defaults to False.
@@ -279,12 +288,16 @@ def queryDiscosWeb(
 
 
 def queryDiscosWebMultiple(
-    token: str, launchIDs: list, saveFolder="data/discosweb", forceRegen=False
+    token: str,
+    launchIDs: list,
+    saveFolder="data/discosweb",
+    forceRegen=False,
+    verbose=False,
 ):
     """retreives a dic of list of launch items in a launch id for multiple ids and a list of norad ids
 
     Args:
-        token (str): personal token from discosweb taken from getkeys
+        token (str): personal token from discosweb taken from getCredentials
         launchIDs (list): list of launch id
 
     Returns:
@@ -294,7 +307,7 @@ def queryDiscosWebMultiple(
     dataFrameDict = {}
     noradsListDict = {}
 
-    for launchID in tqdm(launchIDs):
+    for launchID in tqdm(launchIDs, desc="DiscosWeb"):
         P, noradsList = queryDiscosWeb(
             token, launchID, saveFolder, forceRegen, verbose=False
         )
@@ -304,15 +317,58 @@ def queryDiscosWebMultiple(
     return dataFrameDict, noradsListDict
 
 
-# def getData(launches:list, start:datetime, end:datetime):
-#     # TODO FINISH
-#     discosInfoDict, noradDict = discosweb(launches)
+def getTLEsFromLaunches(
+    spaceTrackUsername: str,
+    spaceTrackPassword: str,
+    discosWebToken: str,
+    launchIDs: List[str],
+    start: datetime,
+    end: datetime,
+    combineDiscosAndTLE: bool,
+    collectLaunches: bool = True,
+    forceRegen: bool = False,
+    verbose: bool = False,
+    saveFolder="data",
+):
+    discosDataDict, noradsDict = queryDiscosWebMultiple(
+        discosWebToken,
+        launchIDs,
+        forceRegen=forceRegen,
+        verbose=verbose,
+        saveFolder=f"{saveFolder}/discosweb",
+    )
+    launchesTLEDict: Union[dict, Dict[str, dict]] = {}
 
-#     for launch in launches:
-#         norads = noradDict[launch]
-#         querySpacetrackList(norads)
+    for launchID in launchIDs:
+        if verbose:
+            print(f"\nRetrieving launch: {launchID}\n")
 
-#     pass
+        NORADidList = noradsDict[launchID]
+
+        TLEdict = querySpacetrackMultiple(
+            spaceTrackUsername,
+            spaceTrackPassword,
+            NORADidList,
+            start,
+            end,
+            saveFolder=f"{saveFolder}/{launchID}",
+            forceRegen=forceRegen,
+            verbose=verbose,
+            description=f"Launch: {launchID}",
+        )
+
+        if combineDiscosAndTLE:
+            # Add all Discos data to each of the relevant TLEs
+            # TODO
+            pass
+
+        if collectLaunches:
+            # this combines the two dictionaries python 3.9+
+            launchesTLEDict = launchesTLEDict | TLEdict
+        else:
+            launchesTLEDict[launchID] = TLEdict
+
+    return discosDataDict, launchesTLEDict
 
 
 if __name__ == "__main__":
@@ -320,11 +376,26 @@ if __name__ == "__main__":
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
 
-    token = getkeys(route="discos")
-    username, password = getkeys(route="spacetrack")
+    token = getCredentials(source="discos")
+    username, password = getCredentials(source="spacetrack")
 
     launchIDs = ["2013-066", "2018-092", "2019-084", "2022-002"]
+    # launchIDs = ["2013-066", "2018-092"]
 
-    discosDataDict, noradsDict = queryDiscosWebMultiple(token, launchIDs, forceRegen=False)
+    # discosDataDict, noradsDict = queryDiscosWebMultiple(
+    #     token, launchIDs, forceRegen=False
+    # )
 
-    testDict = querySpacetrackMultiple(username, password, NORADidList, start, end)
+    # testDict = querySpacetrackMultiple(username, password, NORADidList, start, end)
+
+    discosDataDict, launchesTLEDict = getTLEsFromLaunches(
+        username,
+        password,
+        token,
+        launchIDs,
+        start,
+        end,
+        combineDiscosAndTLE=False,
+        collectLaunches=True,
+        forceRegen=False,
+    )

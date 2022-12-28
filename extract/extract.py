@@ -70,6 +70,7 @@ def querySpacetrack(
         end (datetime): end date of the query
         saveFolder (str, optional): location to save the csv. Defaults to "data".
         forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+        verbose (bool, optional): print out extra information on the process. Defaults to True.
 
     Raises:
         ValueError: GET request failed for spacetrack
@@ -159,6 +160,58 @@ def querySpacetrack(
 
         return P
 
+
+def querySpacetrackMultiple(
+    username: str,
+    password: str,
+    NORADidList: list,
+    start: datetime,
+    end: datetime,
+    saveFolder="data",
+    forceRegen: bool = False,
+    verbose: bool = False,
+) -> dict:
+    """Query spacetrack for the TLE data of MULTIPLE NORAD ids over a specific period of time.
+    Generate and save the data if it has not been generated already, then return this data in a dataframe.
+    Return the cached dataframe otherwise.
+
+    Args:
+        username (str): username for spacetrack, can be retrieved using the getKeys function
+        password (str): password for spacetrack, can be retrieved using the getKeys function
+        NORADid (int): list of integer NORAD ids
+        start (datetime): start date of the query
+        end (datetime): end date of the query
+        saveFolder (str, optional): location to save the csv. Defaults to "data".
+        forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+        verbose (bool, optional): print out extra information on the process. Defaults to True.
+
+    Raises:
+        ValueError: GET request failed for spacetrack
+        RuntimeError: API may be overloaded
+
+    Returns:
+        pd.Dataframe: dataframe with TLE information of the NORAD object
+    """
+
+    TLEdict = {}
+
+    for NORADid in tqdm(NORADidList):
+        # Retrieve and store TLE Data
+        TLEdf = querySpacetrack(
+            username,
+            password,
+            NORADid,
+            start,
+            end,
+            saveFolder=saveFolder,
+            forceRegen=forceRegen,
+            verbose=verbose,
+        )
+
+        TLEdict[NORADid] = TLEdf
+
+    return TLEdict
+    
 
 def queryDiscosWeb(
     token: str,
@@ -263,14 +316,15 @@ def queryDiscosWebMultiple(
 
 
 if __name__ == "__main__":
-    norads = [51092, 51062, 51081, 50987, 51032]
+    NORADidList = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
+
     token = getkeys(route="discos")
-
     username, password = getkeys(route="spacetrack")
-    ids = ["2013-066", "2018-092", "2019-084", "2022-002"]
 
-    discosDataDict, noradsDict = queryDiscosWebMultiple(token, ids, forceRegen=False)
-    # queryDiscosWebMultiple(token, ids)
-    # querySpacetrackList(norads)
+    launchIDs = ["2013-066", "2018-092", "2019-084", "2022-002"]
+
+    discosDataDict, noradsDict = queryDiscosWebMultiple(token, launchIDs, forceRegen=False)
+
+    testDict = querySpacetrackMultiple(username, password, NORADidList, start, end)

@@ -108,7 +108,7 @@ def querySpacetrack(
                 P = pd.read_csv(data)
             else:
                 raise RuntimeError(
-                    f"File is empty, may be API overload or deorbitted spacecraft. status={res.status_code}"
+                    f"File is empty (status {res.status_code}), may be API overload or deorbitted spacecraft."
                 )
 
             droplist = [
@@ -139,6 +139,8 @@ def querySpacetrack(
                 .assign(
                     deltat=lambda x: (x.EPOCH - x.shift(1).EPOCH).dt.total_seconds()
                 )
+                # TODO (@Pieter, @Jari, @Tim) Add assign for SGP4 Error here:
+                # .assign()
                 .drop(index=0)
             )
 
@@ -326,10 +328,16 @@ def getTLEsFromLaunches(
     end: datetime,
     combineDiscosAndTLE: bool,
     collectLaunches: bool = True,
+    collectAllTLEs: bool = False,
     forceRegen: bool = False,
     verbose: bool = False,
     saveFolder="data",
 ):
+    # TODO add docstring
+
+    # if you want to return one big TLE DF this simplification is used
+    collectLaunches = True if (collectAllTLEs == True) else False
+
     discosDataDict, noradsDict = queryDiscosWebMultiple(
         discosWebToken,
         launchIDs,
@@ -358,7 +366,7 @@ def getTLEsFromLaunches(
         )
 
         if combineDiscosAndTLE:
-            # Add all Discos data to each of the relevant TLEs
+            # Add all Discos data to each of the relevant TLE dataframes (use pd.merge?)
             # TODO
             pass
 
@@ -367,8 +375,17 @@ def getTLEsFromLaunches(
             launchesTLEDict = launchesTLEDict | TLEdict
         else:
             launchesTLEDict[launchID] = TLEdict
+            
 
-    return discosDataDict, launchesTLEDict
+    if collectAllTLEs:
+        # combine all TLE dataframes into one (pd.concat?)
+        # TODO
+        launchesTLEDataFrame = None
+        pass
+        return discosDataDict, launchesTLEDataFrame
+    else:
+        return discosDataDict, launchesTLEDict
+    
 
 
 if __name__ == "__main__":

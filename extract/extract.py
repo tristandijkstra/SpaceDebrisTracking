@@ -332,10 +332,29 @@ def getTLEsFromLaunches(
     forceRegen: bool = False,
     verbose: bool = False,
     saveFolder="data",
-):
-    # TODO add docstring
+):# TODO add docstring - Momo attempted
+    """if you want to return one big TLE Data frame this simplification is used
 
-    # if you want to return one big TLE DF this simplification is used
+    Args:
+        spaceTrackUsername (str): spacetrack username in keys > spacetrack.txt
+        spaceTrackPassword (str): spacetrack password in keys > spacetrack.txt
+        discosWebToken (str): discosweb token taken from keys > discosweb.txt (generated in discosweb)
+        launchIDs (List[str]): list of launch ids 
+        start (datetime): start date of the query 
+        end (datetime): end date of the query 
+        combineDiscosAndTLE (bool): Adds all Discos data to each of the relevant TLE dataframes
+        collectLaunches (bool, optional): this combines the two dictionaries python 3.9+. Defaults to True.
+        collectAllTLEs (bool, optional): combine all TLE dataframes into one. Defaults to False.
+        forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+        verbose (bool, optional): print out extra information on the process. Defaults to False.
+        saveFolder (str, optional): location to save the csv. Defaults to "data".
+
+    Returns:
+        _type_: returns discosDataDict, launchesTLEDict or launchesTLEDataFrame
+    """
+    
+
+    
     collectLaunches = True if (collectAllTLEs == True) else False
 
     discosDataDict, noradsDict = queryDiscosWebMultiple(

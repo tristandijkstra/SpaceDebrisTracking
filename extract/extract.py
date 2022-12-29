@@ -31,17 +31,7 @@ def getkeys(route:str,folder="keys"):
             return username, password
 
         else:
-            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")\
-    if route == 'discos': #added
-        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
-        if os.path.exists(keyfile):
-            with open(keyfile, "r") as kf:
-                token = kf.read()
-            return token
-        else:
-            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
-    else: 
-        raise ValueError("No key files given/Error")
+            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
     
     elif route == 'discos': 
         keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")

@@ -32,7 +32,7 @@ def getkeys(route:str,folder="keys"):
 
         else:
             raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")\
-    if route == 'discos': 
+    if route == 'discos': #added
         keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
@@ -42,8 +42,8 @@ def getkeys(route:str,folder="keys"):
             raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
     else: 
         raise ValueError("No key files given/Error")
-
-    if route == 'discos': 
+    
+    elif route == 'discos': 
         keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
@@ -244,8 +244,8 @@ def querySpacetrackList(NORADids: list):
     TLE = {} #TLE's
     # norad = {} #satno
     for i in NORADids:
-        P = query(i)
-        P, TLEs = query(i)
+        P = querySpacetrack(i)
+        P, TLEs = querySpacetrack(i)
         datafram[i] = P
         TLE[i] = TLEs
     return datafram, TLE
@@ -257,13 +257,13 @@ if __name__ == "__main__":
     end = datetime(2023, 1, 1)
     token = getkeys('discos')
     username, password = getkeys('spacetrack')
-    q = query(username, password, 27386, start, end, forceRegen=False)
+    q = querySpacetrack(username, password, 27386, start, end, forceRegen=False)
     id = ['2013-066', '2018-092', '2019-084', '2022-002']
     discosweb(token,id)
 
 
     print(q)
     #print(q.dtypes)
-    querySpacetrackList(norads)
+    # querySpacetrackList(norads)
 
 

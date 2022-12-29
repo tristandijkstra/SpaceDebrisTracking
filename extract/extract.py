@@ -350,7 +350,7 @@ def getTLEsFromLaunches(
         saveFolder (str, optional): location to save the csv. Defaults to "data".
 
     Returns:
-        _type_: returns discosDataDict, launchesTLEDict or launchesTLEDataFrame
+        _type_: returns a combined dataframe containing tle and discsos infomation -> discosDataDict, launchesTLEDict or launchesTLEDataFrame
     """
     
 
@@ -387,6 +387,8 @@ def getTLEsFromLaunches(
         if combineDiscosAndTLE:
             # Add all Discos data to each of the relevant TLE dataframes (use pd.merge?)
             # TODO
+
+
             pass
 
         if collectLaunches:

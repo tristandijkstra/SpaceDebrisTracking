@@ -352,6 +352,8 @@ def getTLEsFromLaunches(
     Returns:
         _type_: returns a combined dataframe containing tle and discsos infomation -> discosDataDict, launchesTLEDict or launchesTLEDataFrame
     """
+
+    
     
 
     
@@ -365,6 +367,7 @@ def getTLEsFromLaunches(
         saveFolder=f"{saveFolder}/discosweb",
     )
     launchesTLEDict: Union[dict, Dict[str, dict]] = {}
+
 
     for launchID in launchIDs:
         if verbose:
@@ -386,10 +389,15 @@ def getTLEsFromLaunches(
 
         if combineDiscosAndTLE:
             # Add all Discos data to each of the relevant TLE dataframes (use pd.merge?)
-            # TODO
-            df_cd = pd.merge(discosDataDict, TLEdict, how='inner', left_on = 'cosparId', right_on = 'OBJECT_ID')
-            df_cd.drop('OBJECT_ID',axis=1,inplace=True)
-            return df_cd
+            # TOD
+
+            NORADidList = noradsDict[launchID]
+          
+            for s in NORADidList:
+                df_cd = pd.merge(discosDataDict[launchID], TLEdict[s], how='inner', left_on = 'cosparId', right_on = 'OBJECT_ID')
+                df_cd.drop('OBJECT_ID',axis=1,inplace=True)
+                return df_cd
+            #pass
 
 
         if collectLaunches:
@@ -427,6 +435,8 @@ if __name__ == "__main__":
 
     # testDict = querySpacetrackMultiple(username, password, NORADidList, start, end)
 
+    
+
     discosDataDict, launchesTLEDict = getTLEsFromLaunches(
         username,
         password,
@@ -434,7 +444,10 @@ if __name__ == "__main__":
         launchIDs,
         start,
         end,
-        combineDiscosAndTLE=False,
-        collectLaunches=True,
+        combineDiscosAndTLE=True,
+        collectLaunches=False,
         forceRegen=False,
     )
+
+
+

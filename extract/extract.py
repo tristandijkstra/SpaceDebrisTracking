@@ -387,9 +387,10 @@ def getTLEsFromLaunches(
         if combineDiscosAndTLE:
             # Add all Discos data to each of the relevant TLE dataframes (use pd.merge?)
             # TODO
+            df_cd = pd.merge(discosDataDict, TLEdict, how='inner', left_on = 'cosparId', right_on = 'OBJECT_ID')
+            df_cd.drop('OBJECT_ID',axis=1,inplace=True)
+            return df_cd
 
-
-            pass
 
         if collectLaunches:
             # this combines the two dictionaries python 3.9+

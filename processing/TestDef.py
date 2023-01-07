@@ -68,7 +68,7 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
     return error
 
 def AssignDF(file):
-    file.assign(error_TLE = lambda error: error.apply(lambda x: generateError(x.TLE_LINE1min1, x.TLE_LINE2min1, x.TLE_LINE1, x.TLE_LINE2, x.deltat), axis = 1))
+    file = file.assign(error_TLE = lambda error: error.apply(lambda x: generateError(x.TLE_LINE1min1, x.TLE_LINE2min1, x.TLE_LINE1, x.TLE_LINE2, x.deltat), axis = 1))
     return file
 
 df = pd.read_csv("/Users/pieter/Documents/TU/MSc Spaceflight/Q2/AE4S10 Microsat Engineering/Group Assignment/SpaceDebrisTracking/data/27386.csv")

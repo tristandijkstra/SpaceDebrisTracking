@@ -4,11 +4,11 @@ import requests
 from datetime import datetime
 import os
 import io
+from typing import Tuple, Union, Dict, List
+from tqdm import tqdm
 
-# import datetime
 
-
-def getkeys(route:str,folder="keys"):
+def getCredentials(source: str, folder="keys") -> Union[Tuple[str, str], str]:
     """Read keys file. for "discos" will return a token. for "spacetrack" will return username, password
 
     Args:
@@ -19,18 +19,18 @@ def getkeys(route:str,folder="keys"):
         ValueError: if file does not exist return an error
 
     Returns:
-        _type_: _description_
-        for 'spacetrack' returns  username, password
-        for 'discosweb' returns token
+        for 'spacetrack' returns: username, password (str, str)
+        for 'discosweb' returns: token (str)
     """
-    if route == 'spacetrack':
-        keyfile = os.path.normpath(__file__ + "../../../keys/spacetrack.txt")
+    if source == "spacetrack":
+        keyfile = os.path.normpath(__file__ + f"../../../{folder}/spacetrack.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
                 username, password = kf.read().split("\n")
             return username, password
 
         else:
+<<<<<<< HEAD
             raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
     if route == 'discos':
         keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
@@ -42,22 +42,22 @@ def getkeys(route:str,folder="keys"):
             raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
     else: 
         raise ValueError("No key files given/Error")
+=======
+            raise ValueError(
+                f"No key files given: add a file:'{folder}/spacetrack.txt'"
+            )
+>>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
-    if route == 'discos': 
-        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
+    if source == "discos":
+        keyfile = os.path.normpath(__file__ + f"../../../{folder}/discosweb.txt")
         if os.path.exists(keyfile):
             with open(keyfile, "r") as kf:
                 token = kf.read()
             return token
         else:
-            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
-    else: 
+            raise ValueError(f"No key files given: add a file:'{folder}/discosweb.txt'")
+    else:
         raise ValueError("No key files given/Error")
-
-
-
-
-
 
 
 def querySpacetrack(
@@ -67,20 +67,22 @@ def querySpacetrack(
     start: datetime,
     end: datetime,
     saveFolder="data",
-    forceRegen: bool = False
+    forceRegen: bool = False,
+    verbose: bool = True,
 ) -> pd.DataFrame:
-    """"Query spacetrack for the TLE data of one NORADID over a specific period of time. 
+    """Query spacetrack for the TLE data of one NORADID over a specific period of time.
     Generate and save the data if it has not been generated already, then return this data in a dataframe.
     Return the cached dataframe otherwise.
 
     Args:
-        username (str): username for spacetrack, can be retrieved using the getKeys function
-        password (str): password for spacetrack, can be retrieved using the getKeys function
+        username (str): username for spacetrack, can be retrieved using the getCredentials function
+        password (str): password for spacetrack, can be retrieved using the getCredentials function
         NORADid (int): Norad id of the object
         start (datetime): start date of the query
         end (datetime): end date of the query
         saveFolder (str, optional): location to save the csv. Defaults to "data".
         forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+        verbose (bool, optional): print out extra information on the process. Defaults to True.
 
     Raises:
         ValueError: GET request failed for spacetrack
@@ -88,7 +90,7 @@ def querySpacetrack(
 
     Returns:
         pd.Dataframe: dataframe with TLE information of the NORAD object
-    """ 
+    """
 
     if not os.path.exists(saveFolder):
         os.makedirs(saveFolder)
@@ -99,8 +101,10 @@ def querySpacetrack(
 
     logonURL = "https://www.space-track.org/ajaxauth/login"
     gpURL = "https://www.space-track.org/basicspacedata/query/class/gp_history/"
-    queryStr = f"NORAD_CAT_ID/{NORADid}/EPOCH/>{startS},{endS}/orderby/EPOCH asc/format/csv/"
-    template = (gpURL + queryStr)
+    queryStr = (
+        f"NORAD_CAT_ID/{NORADid}/EPOCH/>{startS},{endS}/orderby/EPOCH asc/format/csv/"
+    )
+    template = gpURL + queryStr
 
     saveFilePath = f"{saveFolder}/{NORADid}.csv"
     if not os.path.exists(saveFilePath) or forceRegen:
@@ -117,7 +121,9 @@ def querySpacetrack(
                 data = io.StringIO(res.text)
                 P = pd.read_csv(data)
             else:
-                raise RuntimeError(f"File is empty, may be API overload. status={res.status_code}")
+                raise RuntimeError(
+                    f"File is empty (status {res.status_code}), may be API overload or deorbitted spacecraft."
+                )
 
             droplist = [
                 "CCSDS_OMM_VERS",
@@ -139,97 +145,182 @@ def querySpacetrack(
                 P.drop(columns=droplist)
                 .assign(EPOCH=lambda x: pd.to_datetime(x.EPOCH, format=dform))
                 .drop_duplicates("EPOCH")
-                .assign(LAUNCH_DATE=lambda x: pd.to_datetime(x.LAUNCH_DATE, format=dform))
+                .assign(
+                    LAUNCH_DATE=lambda x: pd.to_datetime(x.LAUNCH_DATE, format=dform)
+                )
                 .assign(TLE_LINE1min1=lambda x: x.shift(1).TLE_LINE1)
                 .assign(TLE_LINE2min1=lambda x: x.shift(1).TLE_LINE2)
-                .assign(deltat=lambda x: (x.EPOCH - x.shift(1).EPOCH).dt.total_seconds())
+                .assign(
+                    deltat=lambda x: (x.EPOCH - x.shift(1).EPOCH).dt.total_seconds()
+                )
+                # TODO (@Pieter, @Jari, @Tim) Add assign for SGP4 Error here:
+                # .assign()
                 .drop(index=0)
-
             )
 
             P.to_csv(saveFilePath)
 
             return P
     else:
-        print(f"Data for {NORADid} already generated")
+        if verbose:
+            print(f"Data for {NORADid} already generated")
+
         dform = "%Y-%m-%dT%H:%M:%S.%f"
         P = (
             pd.read_csv(saveFilePath, index_col=0)
             .assign(EPOCH=lambda x: pd.to_datetime(x.EPOCH, format=dform))
             .assign(LAUNCH_DATE=lambda x: pd.to_datetime(x.LAUNCH_DATE, format=dform))
-            )
+        )
 
         return P
 
 
-def discos(
-    launchID: str,
+def querySpacetrackMultiple(
+    username: str,
+    password: str,
+    NORADidList: list,
+    start: datetime,
+    end: datetime,
+    saveFolder="data",
+    forceRegen: bool = False,
+    verbose: bool = False,
+    description: Union[str, None] = None,
+) -> dict:
+    """Query spacetrack for the TLE data of MULTIPLE NORAD ids over a specific period of time.
+    Generate and save the data if it has not been generated already, then return this data in a dataframe.
+    Return the cached dataframe otherwise.
+
+    Args:
+        username (str): username for spacetrack, can be retrieved using the getCredentials function
+        password (str): password for spacetrack, can be retrieved using the getCredentials function
+        NORADid (int): list of integer NORAD ids
+        start (datetime): start date of the query
+        end (datetime): end date of the query
+        saveFolder (str, optional): location to save the csv. Defaults to "data".
+        forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+        verbose (bool, optional): print out extra information on the process. Defaults to True.
+
+    Raises:
+        ValueError: GET request failed for spacetrack
+        RuntimeError: API may be overloaded
+
+    Returns:
+        pd.Dataframe: dataframe with TLE information of the NORAD object
+    """
+
+    TLEdict = {}
+
+    errorNORADS = []
+
+    for NORADid in tqdm(NORADidList, desc=description):
+        # Retrieve and store TLE Data
+        try:
+            TLEdf = querySpacetrack(
+                username,
+                password,
+                NORADid,
+                start,
+                end,
+                saveFolder=saveFolder,
+                forceRegen=forceRegen,
+                verbose=verbose,
+            )
+
+            TLEdict[NORADid] = TLEdf
+
+        except Exception as e:
+            errorNORADS.append(NORADid)
+            print(f"Error in querySpacetrack: {e}, proceding")
+
+    if len(errorNORADS) > 0:
+        print(f"Total failed: {len(errorNORADS)} -> {errorNORADS}")
+
+    return TLEdict
+
+
+def queryDiscosWeb(
     token: str,
+    launchID: str,
     saveFolder: str = "discos",
-    forceRegen: bool = False 
-):
+    forceRegen: bool = False,
+    verbose: bool = True,
+) -> Tuple[pd.DataFrame, list]:
     """retreives a dic of list of launch items in a launch id for one id and a list of norad id
 
     Args:
-        launchID (str): the launch ids 
-        token (str): personal token for taken from getkeys()
+        token (str): personal token for taken from getCredentials()
+        launchID (str): the launch ids
         saveFolder (str, optional): location of the folder . Defaults to "discos".
         forceRegen (bool, optional): can change to true if you want to rewrite the folders . Defaults to False.
 
     Returns:
-        _type_: _description_
+        pd.DataFrame: result from discosweb
+        list: list of NORAD ids for given launch
     """
     if not os.path.exists(saveFolder):
-            os.makedirs(saveFolder)
+        os.makedirs(saveFolder)
     saveFilePath = f"{saveFolder}/{launchID}.csv"
 
     if not os.path.exists(saveFilePath) or forceRegen:
-        #print(f"Generating for launch: {launchID}") 
-        URL = 'https://discosweb.esoc.esa.int'
-        token = f'{token}'
+        if verbose:
+            print(f"Generating for launch: {launchID}")
+        URL = "https://discosweb.esoc.esa.int"
+        token = f"{token}"
 
         response = requests.get(
-            f'{URL}/api/objects',
+            f"{URL}/api/objects",
             headers={
-                'Authorization': f'Bearer {token}',
-                'DiscosWeb-Api-Version': '2',
+                "Authorization": f"Bearer {token}",
+                "DiscosWeb-Api-Version": "2",
             },
             params={
-                'filter': f"eq(launch.cosparLaunchNo,'{launchID}')",
-                'sort': '-reentry.epoch',
-
+                "filter": f"eq(launch.cosparLaunchNo,'{launchID}')",
+                "sort": "satno",
             },
         )
 
         doc = response.json()
 
-        b = [] #extracting data
+        b = []  # extracting data
         for u in doc["data"]:
-            i =  u["attributes"]
-            b.append(i)
-        df = pd.DataFrame.from_dict(b) #makes a dictonary of data
-        satnumber = df.satno.values.tolist() #extracts satno coloumn
-        df.to_csv(saveFilePath) 
+            b.append(u["attributes"])
 
-        return df, satnumber
+        # makes a dictonary of data
+        P = pd.DataFrame.from_dict(b)  # type: ignore
+        # extracts satno coloumn
+        satnumber = list(P.satno.values)
 
+        P.to_csv(saveFilePath)
 
-    else:
-        P = pd.read_csv(saveFilePath, index_col=0)
-        satnumber = P.satno.values.tolist()# type: ignore
         return P, satnumber
 
-def discosweb(token: str, launchIDs: list):
+    else:
+        if verbose:
+            print(f"DiscosWeb for launch: {launchID} already retrieved")
+
+        P = pd.read_csv(saveFilePath, index_col=0)
+        satnumber = list(P.satno.values)  # type: ignore
+        return P, satnumber
+
+
+def queryDiscosWebMultiple(
+    token: str,
+    launchIDs: list,
+    saveFolder="data/discosweb",
+    forceRegen=False,
+    verbose=False,
+):
     """retreives a dic of list of launch items in a launch id for multiple ids and a list of norad ids
 
     Args:
-        token (str): personal token from discosweb taken from getkeys
-        launchIDs (list): list of launch id 
+        token (str): personal token from discosweb taken from getCredentials
+        launchIDs (list): list of launch id
 
     Returns:
-        datafram: dic data frame for that launch id
-        norad: a list of the satelitte numbers 
+        dataFrameDict: a dict with a set of pandas dataframes with discosweb tables of each launch
+        noradsListDict: a dictionary with lists of NORAD ids for each launch
     """
+<<<<<<< HEAD
     datafram = {} #dataframe
     norad = {} #satno
     for x in launchIDs:
@@ -249,21 +340,164 @@ def discosweb(token: str, launchIDs: list):
 #         datafram[i] = P
 #         TLE[i] = TLEs
 #     return datafram, TLE
+=======
+    dataFrameDict = {}
+    noradsListDict = {}
+
+    for launchID in tqdm(launchIDs, desc="DiscosWeb"):
+        P, noradsList = queryDiscosWeb(
+            token, launchID, saveFolder, forceRegen, verbose=False
+        )
+        dataFrameDict[launchID] = P
+        noradsListDict[launchID] = noradsList
+
+    return dataFrameDict, noradsListDict
+
+
+def getTLEsFromLaunches(
+    spaceTrackUsername: str,
+    spaceTrackPassword: str,
+    discosWebToken: str,
+    launchIDs: List[str],
+    start: datetime,
+    end: datetime,
+    combineDiscosAndTLE: bool,
+    collectLaunches: bool = True,
+    collectAllTLEs: bool = False,
+    forceRegen: bool = False,
+    verbose: bool = False,
+    saveFolder="data",
+):# TODO add docstring - Momo attempted
+    """if you want to return one big TLE Data frame this simplification is used
+
+    Args:
+        spaceTrackUsername (str): spacetrack username in keys > spacetrack.txt
+        spaceTrackPassword (str): spacetrack password in keys > spacetrack.txt
+        discosWebToken (str): discosweb token taken from keys > discosweb.txt (generated in discosweb)
+        launchIDs (List[str]): list of launch ids 
+        start (datetime): start date of the query 
+        end (datetime): end date of the query 
+        combineDiscosAndTLE (bool): Adds all Discos data to each of the relevant TLE dataframes
+        collectLaunches (bool, optional): this combines the two dictionaries python 3.9+. Defaults to True.
+        collectAllTLEs (bool, optional): combine all TLE dataframes into one. Defaults to False.
+        forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
+        verbose (bool, optional): print out extra information on the process. Defaults to False.
+        saveFolder (str, optional): location to save the csv. Defaults to "data".
+
+    Returns:
+        _type_: returns a combined dataframe containing tle and discsos infomation -> discosDataDict, launchesTLEDict or launchesTLEDataFrame
+    """
+
+    
+    
+
+    
+    collectLaunches = True if (collectAllTLEs == True) else False
+
+    discosDataDict, noradsDict = queryDiscosWebMultiple(
+        discosWebToken,
+        launchIDs,
+        forceRegen=forceRegen,
+        verbose=verbose,
+        saveFolder=f"{saveFolder}/discosweb",
+    )
+    launchesTLEDict: Union[dict, Dict[str, dict]] = {}
+
+
+    for launchID in launchIDs:
+        if verbose:
+            print(f"\nRetrieving launch: {launchID}\n")
+
+        NORADidList = noradsDict[launchID]
+
+        TLEdict = querySpacetrackMultiple(
+            spaceTrackUsername,
+            spaceTrackPassword,
+            NORADidList,
+            start,
+            end,
+            saveFolder=f"{saveFolder}/{launchID}",
+            forceRegen=forceRegen,
+            verbose=verbose,
+            description=f"Launch: {launchID}",
+        )
+
+        if combineDiscosAndTLE:
+            # Add all Discos data to each of the relevant TLE dataframes (use pd.merge?)
+            # TOD
+
+            NORADidList = noradsDict[launchID]
+          
+            for s in NORADidList:
+                df_cd = pd.merge(discosDataDict[launchID], TLEdict[s], how='inner', left_on = 'cosparId', right_on = 'OBJECT_ID')
+                df_cd.drop('OBJECT_ID',axis=1,inplace=True)
+                return df_cd
+            #pass
+
+
+        if collectLaunches:
+            # this combines the two dictionaries python 3.9+
+            launchesTLEDict = launchesTLEDict | TLEdict
+        else:
+            launchesTLEDict[launchID] = TLEdict
+            
+
+    if collectAllTLEs:
+        # combine all TLE dataframes into one (pd.concat?)
+        # TODO
+        launchesTLEDataFrame = None
+        pass
+        return discosDataDict, launchesTLEDataFrame
+    else:
+        return discosDataDict, launchesTLEDict
+    
+>>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
 
 if __name__ == "__main__":
-    norads = [51092, 51062, 51081, 50987, 51032]
+    NORADidList = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
+<<<<<<< HEAD
     token = getkeys('discos')
     username, password = getkeys('spacetrack')
     q = querySpacetrack(username, password, 27340, start, end, forceRegen=False)
     id = ['2013-066', '2018-092', '2019-084', '2022-002']
     #discosweb(token,id)
 
+=======
+>>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
+    token = getCredentials(source="discos")
+    username, password = getCredentials(source="spacetrack")
 
+    launchIDs = ["2013-066", "2018-092", "2019-084", "2022-002"]
+    # launchIDs = ["2013-066", "2018-092"]
+
+    # discosDataDict, noradsDict = queryDiscosWebMultiple(
+    #     token, launchIDs, forceRegen=False
+    # )
+
+    # testDict = querySpacetrackMultiple(username, password, NORADidList, start, end)
+
+    
+
+    discosDataDict, launchesTLEDict = getTLEsFromLaunches(
+        username,
+        password,
+        token,
+        launchIDs,
+        start,
+        end,
+        combineDiscosAndTLE=True,
+        collectLaunches=False,
+        forceRegen=False,
+    )
+
+<<<<<<< HEAD
     #print(q.dtypes)
     # querySpacetrackList(norads)
+=======
+>>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
 

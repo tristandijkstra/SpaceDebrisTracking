@@ -30,23 +30,9 @@ def getCredentials(source: str, folder="keys") -> Union[Tuple[str, str], str]:
             return username, password
 
         else:
-<<<<<<< HEAD
-            raise ValueError("No key files given: add a file:'keys/spacetrack.txt'")
-    if route == 'discos':
-        keyfile = os.path.normpath(__file__ + "../../../keys/discosweb.txt")
-        if os.path.exists(keyfile):
-            with open(keyfile, "r") as kf:
-                token = kf.read()
-            return token
-        else:
-            raise ValueError("No key files given: add a file:'keys/discosweb.txt'")
-    else: 
-        raise ValueError("No key files given/Error")
-=======
             raise ValueError(
                 f"No key files given: add a file:'{folder}/spacetrack.txt'"
             )
->>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
     if source == "discos":
         keyfile = os.path.normpath(__file__ + f"../../../{folder}/discosweb.txt")
@@ -320,27 +306,6 @@ def queryDiscosWebMultiple(
         dataFrameDict: a dict with a set of pandas dataframes with discosweb tables of each launch
         noradsListDict: a dictionary with lists of NORAD ids for each launch
     """
-<<<<<<< HEAD
-    datafram = {} #dataframe
-    norad = {} #satno
-    for x in launchIDs:
-        P, norads = discos(x, token)
-        datafram[x] = P
-        norad[x] = norads
-    return datafram, norad
-
-
-# def querySpacetrackList(NORADids: list):
-#     datafram = {} #dataframe
-#     TLE = {} #TLE's
-#     # norad = {} #satno
-#     for i in NORADids:
-#         P = query(i)
-#         P, TLEs = query(i)
-#         datafram[i] = P
-#         TLE[i] = TLEs
-#     return datafram, TLE
-=======
     dataFrameDict = {}
     noradsListDict = {}
 
@@ -451,22 +416,12 @@ def getTLEsFromLaunches(
     else:
         return discosDataDict, launchesTLEDict
     
->>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
 
 if __name__ == "__main__":
     NORADidList = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
-<<<<<<< HEAD
-    token = getkeys('discos')
-    username, password = getkeys('spacetrack')
-    q = querySpacetrack(username, password, 27340, start, end, forceRegen=False)
-    id = ['2013-066', '2018-092', '2019-084', '2022-002']
-    #discosweb(token,id)
-
-=======
->>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
     token = getCredentials(source="discos")
     username, password = getCredentials(source="spacetrack")
@@ -494,10 +449,5 @@ if __name__ == "__main__":
         forceRegen=False,
     )
 
-<<<<<<< HEAD
-    #print(q.dtypes)
-    # querySpacetrackList(norads)
-=======
->>>>>>> 2b18eff0d48da2ed8e1a9e2293cfcdb173cdc25f
 
 

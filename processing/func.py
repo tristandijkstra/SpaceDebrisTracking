@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Tuple
 
@@ -60,8 +59,8 @@ def generateError(TLE1_1, TLE1_2, TLE2_1, TLE2_2, dt):
 
     return error
 
-def AssignDF(error, file):
-    file.assign(error_TLE = lambda x: generateError(x.TLE_LINE1MIN1, x.TLE_LINE2MIN1, x.TLE_LINE1, x.TLE_LINE2, x.dt))
+def AssignDF(file):
+    file = file.assign(error_TLE = lambda error: error.apply(lambda x: generateError(x.TLE_LINE1min1, x.TLE_LINE2min1, x.TLE_LINE1, x.TLE_LINE2, x.deltat), axis = 1))
     return file
 
 # def AssignTest(error,file):

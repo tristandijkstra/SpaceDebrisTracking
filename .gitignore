@@ -5,6 +5,7 @@ keys/
 *.json
 data/
 test/
+test.py
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

@@ -6,6 +6,7 @@ import os
 import io
 from typing import Tuple, Union, Dict, List
 from tqdm import tqdm
+import measure
 
 
 def getCredentials(source: str, folder="keys") -> Union[Tuple[str, str], str]:
@@ -139,9 +140,18 @@ def querySpacetrack(
                 .assign(
                     deltat=lambda x: (x.EPOCH - x.shift(1).EPOCH).dt.total_seconds()
                 )
-                # TODO (@Pieter, @Jari, @Tim) Add assign for SGP4 Error here:
-                # .assign()
                 .drop(index=0)
+            )
+
+            # Add errors
+            # NOTE yes this is a nasty apply
+            # NOTE this can be improved, it has been left, so because of time constraints
+            P[["errorX", "errorY", "errorZ", "overallCovariance"]] = P.apply(
+                lambda x: measure.generateErrors(
+                    x.TLE_LINE1, x.TLE_LINE2, x.TLE_LINE1min1, x.TLE_LINE2min1
+                ),
+                axis=1,
+                result_type="expand",
             )
 
             P.to_csv(saveFilePath)
@@ -216,7 +226,7 @@ def querySpacetrackMultiple(
 
         except Exception as e:
             errorNORADS.append(NORADid)
-            print(f"Error in querySpacetrack: {e}, proceding")
+            print(f"Error in querySpacetrack: {e}, proceeding")
 
     if len(errorNORADS) > 0:
         print(f"Total failed: {len(errorNORADS)} -> {errorNORADS}")
@@ -444,9 +454,9 @@ if __name__ == "__main__":
         launchIDs,
         start,
         end,
-        combineDiscosAndTLE=True,
+        combineDiscosAndTLE=False,
         collectLaunches=False,
-        forceRegen=False,
+        forceRegen=True,
     )
 
 

@@ -6,8 +6,12 @@ import os
 import io
 from typing import Tuple, Union, Dict, List
 from tqdm import tqdm
-import measure
 
+# TODO this should be fixed
+try:
+    from . import measure
+except:
+    import measure
 
 def getCredentials(source: str, folder="keys") -> Union[Tuple[str, str], str]:
     """Read keys file. for "discos" will return a token. for "spacetrack" will return username, password
@@ -429,7 +433,6 @@ def getTLEsFromLaunches(
 
 
 if __name__ == "__main__":
-    NORADidList = [51092, 51062, 51081, 50987, 51032]
     start = datetime(2016, 1, 1)
     end = datetime(2023, 1, 1)
 
@@ -437,15 +440,6 @@ if __name__ == "__main__":
     username, password = getCredentials(source="spacetrack")
 
     launchIDs = ["2013-066", "2018-092", "2019-084", "2022-002"]
-    # launchIDs = ["2013-066", "2018-092"]
-
-    # discosDataDict, noradsDict = queryDiscosWebMultiple(
-    #     token, launchIDs, forceRegen=False
-    # )
-
-    # testDict = querySpacetrackMultiple(username, password, NORADidList, start, end)
-
-    
 
     discosDataDict, launchesTLEDict = getTLEsFromLaunches(
         username,

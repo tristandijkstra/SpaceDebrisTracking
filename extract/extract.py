@@ -13,6 +13,7 @@ try:
 except:
     import measure
 
+
 def getCredentials(source: str, folder="keys") -> Union[Tuple[str, str], str]:
     """Read keys file. for "discos" will return a token. for "spacetrack" will return username, password
 
@@ -346,31 +347,44 @@ def getTLEsFromLaunches(
     forceRegen: bool = False,
     verbose: bool = False,
     saveFolder="data",
-):# TODO add docstring - Momo attempted
-    """if you want to return one big TLE Data frame this simplification is used
+) -> Union[
+    Tuple[Dict[str, pd.DataFrame], Dict[int, pd.DataFrame]],
+    Tuple[Dict[str, pd.DataFrame], Dict[str, Dict[int, pd.DataFrame]]],
+    Tuple[Dict[str, pd.DataFrame], pd.DataFrame],
+]:
+    """
+    Retrieve a collection of TLE Dataframes from a list of launch ids. Multiple return options exist
+
+    This is the final end-user tool
 
     Args:
         spaceTrackUsername (str): spacetrack username in keys > spacetrack.txt
         spaceTrackPassword (str): spacetrack password in keys > spacetrack.txt
         discosWebToken (str): discosweb token taken from keys > discosweb.txt (generated in discosweb)
-        launchIDs (List[str]): list of launch ids 
-        start (datetime): start date of the query 
-        end (datetime): end date of the query 
+        launchIDs (List[str]): list of launch ids
+        start (datetime): start date of the query
+        end (datetime): end date of the query
         combineDiscosAndTLE (bool): Adds all Discos data to each of the relevant TLE dataframes
-        collectLaunches (bool, optional): this combines the two dictionaries python 3.9+. Defaults to True.
-        collectAllTLEs (bool, optional): combine all TLE dataframes into one. Defaults to False.
+        collectLaunches (bool, optional): This puts all tles into one dictionary instead of a dictionary of dictionaries per launch. Defaults to True.
+        collectAllTLEs (bool, optional): combine all TLE dataframes into one big dataframe. Defaults to False.
         forceRegen (bool, optional): force a regen of the data, even if the data had previously been cached. Defaults to False.
         verbose (bool, optional): print out extra information on the process. Defaults to False.
         saveFolder (str, optional): location to save the csv. Defaults to "data".
 
     Returns:
-        _type_: returns a combined dataframe containing tle and discsos infomation -> discosDataDict, launchesTLEDict or launchesTLEDataFrame
+        collectLaunches enabled (default):
+            discoswebdict (dict) : dictionary with satellite info as a dataframe per launch.
+            launchesTLEDict (dict) : keys are the NORADids, values are dataframes of those NORADids.
+        collectLaunches disabled:
+            discoswebdict (dict) : dictionary with satellite info as a dataframe per launch.
+            launchesTLEDict (dict) : keys are the launches, values are dictionaries with NORADids as keys and the dataframes of those NORADids as values.
+        collectAllTLEs enabled:
+            discoswebdict (dict) : dictionary with satellite info as a dataframe per launch.
+            launchesTLEDict (pd.DataFrame) : one big dataframe with all the individual dataframes combined
+
+        enabling combineDiscosAndTLE : NORAD id dataframes include discos info in as a result of a few to many database style merge
     """
 
-    
-    
-
-    
     collectLaunches = True if (collectAllTLEs == True) else False
 
     discosDataDict, noradsDict = queryDiscosWebMultiple(
@@ -381,7 +395,6 @@ def getTLEsFromLaunches(
         saveFolder=f"{saveFolder}/discosweb",
     )
     launchesTLEDict: Union[dict, Dict[str, dict]] = {}
-
 
     for launchID in launchIDs:
         if verbose:
@@ -402,34 +415,33 @@ def getTLEsFromLaunches(
         )
 
         if combineDiscosAndTLE:
-            # Add all Discos data to each of the relevant TLE dataframes (use pd.merge?)
-            # TOD
-
-            NORADidList = noradsDict[launchID]
-          
-            for s in NORADidList:
-                df_cd = pd.merge(discosDataDict[launchID], TLEdict[s], how='inner', left_on = 'cosparId', right_on = 'OBJECT_ID')
-                df_cd.drop('OBJECT_ID',axis=1,inplace=True)
-                return df_cd
-            #pass
-
+            # Add all Discos data to each of the relevant TLE dataframes
+            for NORADid in NORADidList:
+                try:
+                    TLEdict[NORADid] = pd.merge(
+                        discosDataDict[launchID],
+                        TLEdict[NORADid],
+                        how="inner",
+                        left_on="cosparId",
+                        right_on="OBJECT_ID",
+                    ).drop("OBJECT_ID", axis=1)
+                except:
+                    print(f"Skipped NORADid {NORADid}")
 
         if collectLaunches:
             # this combines the two dictionaries python 3.9+
             launchesTLEDict = launchesTLEDict | TLEdict
         else:
             launchesTLEDict[launchID] = TLEdict
-            
 
     if collectAllTLEs:
-        # combine all TLE dataframes into one (pd.concat?)
-        # TODO
-        launchesTLEDataFrame = None
-        pass
+        # combine all TLE dataframes into one dataframe
+        launchesTLEDataFrame = pd.concat(list(launchesTLEDict.values())).reset_index( # type: ignore
+            drop=True
+        )
         return discosDataDict, launchesTLEDataFrame
     else:
         return discosDataDict, launchesTLEDict
-    
 
 
 if __name__ == "__main__":
@@ -450,8 +462,5 @@ if __name__ == "__main__":
         end,
         combineDiscosAndTLE=False,
         collectLaunches=False,
-        forceRegen=True,
+        forceRegen=False,
     )
-
-
-

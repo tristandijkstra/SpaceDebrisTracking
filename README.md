@@ -14,6 +14,7 @@ username, password = getCredentials(source="spacetrack")
 
 launchIDs = ["2013-066", "2018-092", "2019-084", "2022-002"]
 
+# standard method, with combined TLEs
 discosDataDict, launchesTLEDict = getTLEsFromLaunches(
     username,
     password,
@@ -21,8 +22,26 @@ discosDataDict, launchesTLEDict = getTLEsFromLaunches(
     launchIDs,
     start,
     end,
-    combineDiscosAndTLE=False,
+    combineDiscosAndTLE=True,
     collectLaunches=False,
-    forceRegen=True,
+    forceRegen=False,
 )
+
+print(launchesTLEDict["2013-066"][39416])
+
+# combining everything into one DF
+discosDataDict, df = getTLEsFromLaunches(
+    username,
+    password,
+    token,
+    launchIDs,
+    start,
+    end,
+    combineDiscosAndTLE=True,
+    collectLaunches=True,
+    collectAllTLEs=True,
+    forceRegen=False,
+)
+
+print(df)
 ```
